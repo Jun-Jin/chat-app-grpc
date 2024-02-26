@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	api "chat-app-grpc/internal/api/v1"
+	api "chat-app-grpc/api/v1"
 
 	"google.golang.org/protobuf/proto"
 )

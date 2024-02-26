@@ -1,7 +1,7 @@
 package log
 
 import (
-	api "chat-app-grpc/internal/api/v1"
+	api "chat-app-grpc/api/v1"
 	"io"
 	"os"
 	"testing"
