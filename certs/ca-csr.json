@@ -1,0 +1,17 @@
+{
+  "CN": "My Awesome CA",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "JP",
+      "ST": "Tokyo",
+      "L": "Arakawa City",
+      "O": "Askara Co., Ltd.",
+      "OU": "My Awesome Department"
+    }
+  ]
+}
+
