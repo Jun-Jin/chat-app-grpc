@@ -1,0 +1,17 @@
+{
+  "CN": "client",
+  "hosts": [],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "JP",
+      "L": "Tokyo",
+      "ST": "Arakawa City",
+      "O": "Askara Co., Ltd.",
+      "OU": "Distributed Services"
+    }
+  ]
+}

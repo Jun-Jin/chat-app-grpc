@@ -9,11 +9,22 @@ init:
 gencert:
 	cfssl gencert \
 		-initca certs/ca-csr.json | cfssljson -bare ca
+
+	# server
 	cfssl gencert \
 		-ca=ca.pem \
 		-ca-key=ca-key.pem \
 		-config=certs/ca-config.json \
-		-profile=server certs/server-csr.json | cfssljson -bare server
+		-profile=server \
+		certs/server-csr.json | cfssljson -bare server
+
+	# client
+	cfssl gencert \
+		-ca=ca.pem \
+		-ca-key=ca-key.pem \
+		-config=certs/ca-config.json \
+		-profile=client \
+		certs/server-csr.json | cfssljson -bare client
 	mv *.pem *.csr ${CONFIG_PATH}
 
 .PHONY: compile
