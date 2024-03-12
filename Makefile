@@ -1,8 +1,8 @@
-CONFIG_PATH=${HOME}/works/jun-jin/chat-app-grpc/.certs/
+CONFIG_PATH=${HOME}/works/jun-jin/chat-app-grpc/.certs
 
 .PHONY: init
 init:
-	rm -f *.pem *.csr
+	rm -rf ${CONFIG_PATH}
 	mkdir -p ${CONFIG_PATH}
 
 .PHONY: gencert
@@ -24,8 +24,26 @@ gencert:
 		-ca-key=ca-key.pem \
 		-config=certs/ca-config.json \
 		-profile=client \
-		certs/server-csr.json | cfssljson -bare client
+		-cn="root" \
+		certs/client-csr.json | cfssljson -bare root-client
+
+	cfssl gencert \
+		-ca=ca.pem \
+		-ca-key=ca-key.pem \
+		-config=certs/ca-config.json \
+		-profile=client \
+		-cn="nobody" \
+		certs/client-csr.json | cfssljson -bare nobody-client
 	mv *.pem *.csr ${CONFIG_PATH}
+
+$(CONFIG_PATH)/model.conf:
+	cp certs/model.conf ${CONFIG_PATH}/model.conf
+$(CONFIG_PATH)/policy.csv:
+	cp certs/policy.csv ${CONFIG_PATH}/policy.csv
+
+.PHONY: test
+test: $(CONFIG_PATH)/policy.csv $(CONFIG_PATH)/model.conf
+	go test -race ./...
 
 .PHONY: compile
 compile:
@@ -35,10 +53,6 @@ compile:
 		--go_opt=paths=source_relative \
 		--go-grpc_opt=paths=source_relative \
 		--proto_path=.
-
-.PHONY: test
-test:
-	go test -race ./...
 
 .PHONY: clean
 clean:
