@@ -3,6 +3,7 @@ package discovery
 import (
 	"net"
 
+	"github.com/hashicorp/raft"
 	"github.com/hashicorp/serf/serf"
 	"go.uber.org/zap"
 )
@@ -74,20 +75,20 @@ func (m *Membership) eventHandler() {
 				if m.isLocal(member) {
 					continue
 				}
-				m.handlerJoin(member)
+				m.handleJoin(member)
 			}
 		case serf.EventMemberLeave, serf.EventMemberFailed:
 			for _, member := range e.(serf.MemberEvent).Members {
 				if m.isLocal(member) {
 					continue
 				}
-				m.handlerLeave(member)
+				m.handleLeave(member)
 			}
 		}
 	}
 }
 
-func (m *Membership) handlerJoin(member serf.Member) {
+func (m *Membership) handleJoin(member serf.Member) {
 	if err := m.handler.Join(
 		member.Name,
 		member.Tags["rpc_addr"],
@@ -96,7 +97,7 @@ func (m *Membership) handlerJoin(member serf.Member) {
 	}
 }
 
-func (m *Membership) handlerLeave(member serf.Member) {
+func (m *Membership) handleLeave(member serf.Member) {
 	if err := m.handler.Leave(
 		member.Name,
 	); err != nil {
@@ -117,7 +118,11 @@ func (m *Membership) Leave() error {
 }
 
 func (m *Membership) logError(err error, msg string, member serf.Member) {
-	m.logger.Error(
+	log := m.logger.Error
+	if err == raft.ErrNotLeader {
+		log = m.logger.Debug
+	}
+	log(
 		msg,
 		zap.Error(err),
 		zap.String("name", member.Name),

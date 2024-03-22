@@ -178,6 +178,63 @@ func (l *DistributedLog) Read(offset uint64) (*api.Record, error) {
 	return l.log.Read(offset)
 }
 
+func (l *DistributedLog) Join(id, addr string) error {
+	configFuture := l.raft.GetConfiguration()
+	if err := configFuture.Error(); err != nil {
+		return err
+	}
+	serverID := raft.ServerID(id)
+	serverAddr := raft.ServerAddress(addr)
+	for _, srv := range configFuture.Configuration().Servers {
+		if srv.ID == serverID || srv.Address == serverAddr {
+			if srv.ID == serverID && srv.Address == serverAddr {
+				return nil
+			}
+			removeFuture := l.raft.RemoveServer(serverID, 0, 0)
+			if err := removeFuture.Error(); err != nil {
+				return err
+			}
+		}
+	}
+	addFuture := l.raft.AddVoter(serverID, serverAddr, 0, 0)
+	if err := addFuture.Error(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *DistributedLog) Leave(id string) error {
+	removeFuture := l.raft.RemoveServer(raft.ServerID(id), 0, 0)
+	return removeFuture.Error()
+}
+
+func (l *DistributedLog) WaitForLeader(timeout time.Duration) error {
+	timeoutCh := time.After(timeout)
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-timeoutCh:
+			return fmt.Errorf("timed out")
+		case <-ticker.C:
+			if l := l.raft.Leader(); l != "" {
+				return nil
+			}
+		}
+	}
+}
+
+func (l *DistributedLog) Close() error {
+	f := l.raft.Shutdown()
+	if err := f.Error(); err != nil {
+		return err
+	}
+	if err := l.raftLog.Log.Close(); err != nil {
+		return err
+	}
+	return l.log.Close()
+}
+
 var _ raft.FSM = (*fsm)(nil)
 
 type fsm struct {
@@ -232,6 +289,8 @@ func (s *snapshot) Persist(sink raft.SnapshotSink) error {
 	return sink.Close()
 }
 
+func (s *snapshot) Release() {}
+
 func (f *fsm) Restore(r io.ReadCloser) error {
 	b := make([]byte, lenWidth)
 	var buf bytes.Buffer
@@ -243,11 +302,11 @@ func (f *fsm) Restore(r io.ReadCloser) error {
 			return err
 		}
 		size := int64(enc.Uint64(b))
-		if _, err := io.CopyN(&buf, r, size); err != nil {
+		if _, err = io.CopyN(&buf, r, size); err != nil {
 			return err
 		}
 		record := &api.Record{}
-		if err := proto.Unmarshal(buf.Bytes(), record); err != nil {
+		if err = proto.Unmarshal(buf.Bytes(), record); err != nil {
 			return err
 		}
 		if i == 0 {
@@ -256,12 +315,13 @@ func (f *fsm) Restore(r io.ReadCloser) error {
 				return err
 			}
 		}
+		if _, err = f.log.Append(record); err != nil {
+			return err
+		}
 		buf.Reset()
 	}
 	return nil
 }
-
-func (s *snapshot) Release() {}
 
 var _ raft.LogStore = (*logStore)(nil)
 
@@ -316,7 +376,7 @@ func (l *logStore) StoreLogs(records []*raft.Log) error {
 }
 
 func (l *logStore) DeleteRange(min, max uint64) error {
-	return l.Truncate(min)
+	return l.Truncate(max)
 }
 
 var _ raft.StreamLayer = (*StreamLayer)(nil)
