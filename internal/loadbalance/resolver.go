@@ -37,7 +37,7 @@ func (r *Resolver) Build(target resolver.Target, cc resolver.ClientConn, opts re
 		fmt.Sprintf(`{"loadBalancingConfig":[{"%s":{}}]}`, Name),
 	)
 	var err error
-	r.resolverConn, err = grpc.Dial(target.Endpoint, dialOpts...)
+	r.resolverConn, err = grpc.Dial(target.Endpoint(), dialOpts...)
 	if err != nil {
 		return nil, err
 	}

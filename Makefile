@@ -1,4 +1,4 @@
-CONFIG_PATH=${HOME}/works/jun-jin/chat-app-grpc/.certs
+CONFIG_PATH=$(shell pwd)/.certs
 
 .PHONY: init
 init:

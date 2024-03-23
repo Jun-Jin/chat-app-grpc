@@ -6,6 +6,7 @@ import (
 	"chat-app-grpc/internal/loadbalance"
 	"chat-app-grpc/internal/server"
 	"net"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -53,7 +54,10 @@ func TestResolver(t *testing.T) {
 	r := &loadbalance.Resolver{}
 	_, err = r.Build(
 		resolver.Target{
-			Endpoint: l.Addr().String(),
+			URL: url.URL{
+				Scheme: r.Scheme(),
+				Path:   l.Addr().String(),
+			},
 		},
 		conn,
 		opts,
